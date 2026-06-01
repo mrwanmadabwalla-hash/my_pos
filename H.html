@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>شيكو طاطس OS - نظام الإدارة الشامل VIP</title>
+    <style>
+        :root {
+            --win-bg: #e4ebf5; --win-surface: rgba(255, 255, 255, 0.95); --win-taskbar: rgba(15, 15, 15, 0.95);
+            --win-border: rgba(0, 0, 0, 0.2); --text-main: #1c1c1c; --text-muted: #5f6368;
+            --win-accent: #e61c24; --win-accent-hover: #b81017; --success: #107c41; --danger: #a80000;
+            --primary-blue: #0078d4; --panel-bg: #f5f5f5; --admin-color: #673ab7;
+            --premium-dark: #121212; --premium-gold: #d4af37; --premium-card: rgba(30, 30, 30, 0.9);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, sans-serif; user-select: none; }
+
+        body {
+            background: linear-gradient(rgba(10, 5, 0, 0.8), rgba(10, 5, 0, 0.9)), url('https://images.unsplash.com/photo-1576107232684-1279f3908594?q=80&w=1920&auto=format&fit=crop') no-repeat center/cover;
+            height: 100vh; overflow: hidden; position: relative;
+        }
+
+        #win-login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(20, 0, 2, 0.95), rgba(80, 0, 5, 0.98));
+            z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: white; backdrop-filter: blur(15px); transition: opacity 0.4s ease;
+        }
+
+        .login-avatar { width: 100px; height: 100px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 45px; margin-bottom: 15px; border: 2px solid var(--premium-gold); box-shadow: 0 0 15px rgba(212, 175, 55, 0.3); }
+        .login-select-user, .login-pass-input, .btn-login { width: 260px; padding: 10px; border-radius: 6px; outline: none; margin-bottom: 10px; font-size: 14px; text-align: center; }
+        .login-select-user { background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); cursor: pointer; font-weight: bold; }
+        .login-select-user option { background: #1c0002; color: white; }
+        .login-pass-input { border: 1px solid rgba(255,255,255,0.4); background: rgba(0,0,0,0.4); color: white; }
+        .btn-login { background: var(--win-accent); color: white; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; margin-top: 5px;}
+        .btn-login:hover { background: var(--win-accent-hover); box-shadow: 0 0 10px var(--win-accent); }
+
+        #desktop { width: 100%; height: calc(100vh - 40px); position: absolute; top: 0; left: 0; padding: 20px; display: flex; flex-direction: column; gap: 15px; align-items: flex-start; flex-wrap: wrap; }
+        .desktop-icon { width: 95px; display: flex; flex-direction: column; align-items: center; text-align: center; cursor: pointer; padding: 8px; border-radius: 8px; transition: all 0.2s; }
+        .desktop-icon:hover { background: rgba(255, 255, 255, 0.15); transform: translateY(-2px); }
+        .desktop-icon span:last-child { color: white; font-size: 12px; font-weight: 600; text-shadow: 1px 1px 5px rgba(0,0,0,1); margin-top: 6px; }
+
+        .win-window {
+            position: absolute; background: var(--win-surface); backdrop-filter: blur(20px);
+            border: 1px solid var(--win-border); border-radius: 8px; box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column; overflow: hidden; z-index: 5; color: var(--text-main);
+        }
+        .win-header { background: var(--panel-bg); padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--win-border); cursor: move; }
+        .win-title { font-size: 12px; font-weight: 700; }
+        .win-controls { display: flex; gap: 6px; }
+        .win-ctrl-btn { width: 24px; height: 24px; border-radius: 4px; border: none; background: transparent; color: var(--text-main); font-weight: bold; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; transition: 0.1s; }
+        .win-ctrl-btn:hover { background: rgba(128,128,128,0.2); }
+        .win-ctrl-btn.btn-close:hover { background: var(--danger); color: white; }
+        .win-body { padding: 10px; flex-grow: 1; overflow-y: auto; }
+
+        /* الكاشير */
+        .pos-layout { display: flex; gap: 10px; height: 460px; width: 850px; }
+        .pos-menu { flex: 1.5; display: flex; flex-direction: column; gap: 10px; }
+        .pos-cart { flex: 1; background: var(--win-surface); border: 1px solid var(--win-border); border-radius: 6px; display: flex; flex-direction: column; }
+        .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; overflow-y: auto; padding-right: 5px; }
+        .product-card { background: var(--win-surface); border: 1px solid var(--win-border); border-radius: 6px; padding: 10px 8px; cursor: pointer; transition: all 0.1s; display: flex; flex-direction: column; justify-content: space-between; min-height: 85px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .product-card:hover { border-color: var(--win-accent); background-color: rgba(230,28,36,0.05); transform: scale(1.03); box-shadow: 0 4px 10px rgba(230,28,36,0.2); }
+
+        .cat-bar { display: flex; gap: 4px; border-bottom: 1px solid var(--win-border); padding-bottom: 6px; flex-wrap: wrap; }
+        .cat-btn { background: var(--win-surface); color: var(--text-main); border: 1px solid var(--win-border); padding: 5px 10px; font-size: 11px; font-weight: bold; cursor: pointer; border-radius: 4px; transition: 0.2s; }
+        .cat-btn.active { background: var(--win-accent); color: white; border-color: var(--win-accent); }
+
+        .cart-title-bar { background: var(--panel-bg); padding: 8px; font-weight: bold; font-size: 12px; border-bottom: 1px solid var(--win-border); display: flex; justify-content: space-between; align-items: center; }
+        .cart-items-list { flex-grow: 1; padding: 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+        .cart-row { border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 6px; margin-bottom: 2px; }
+        .cart-row-top { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+        .qty-btn { width: 22px; height: 22px; background: var(--panel-bg); color: var(--text-main); border: 1px solid var(--win-border); cursor: pointer; font-weight: bold; border-radius: 4px; }
+        .cart-footer { background: var(--win-surface); padding: 10px; border-top: 2px solid var(--win-border); display: flex; flex-direction: column; gap: 8px; font-size: 12px; }
+        
+        .win-input, .win-select { padding: 6px 8px; border: 1px solid var(--win-border); border-radius: 4px; font-size: 12px; outline: none; }
+        .win-input:focus, .win-select:focus { border-color: var(--primary-blue); }
+        .btn-checkout { background: var(--success); color: white; border: none; padding: 8px; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; transition: 0.2s; }
+        .btn-checkout:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .win-table { width: 100%; border-collapse: collapse; font-size: 11px; background: var(--win-surface); color: var(--text-main); }
+        .win-table th, .win-table td { border: 1px solid var(--win-border); padding: 8px; text-align: right; }
+        .win-table th { background: var(--panel-bg); font-weight: 700; color: #333; }
+
+        /* شريط المهام المدمج */
+        #taskbar { position: absolute; bottom: 0; left: 0; width: 100%; height: 42px; background: var(--win-taskbar); backdrop-filter: blur(15px); border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center; padding: 0 15px; z-index: 10000; color: white; box-shadow: 0 -2px 10px rgba(0,0,0,0.5); }
+        
+        .tb-controls { display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; }
+        .tb-btn { background: var(--win-accent); color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap; height: 26px; }
+        .tb-btn:hover { background: var(--win-accent-hover); }
+        .tb-btn.danger { background: var(--danger); }
+        .tb-timer { font-size: 11px; font-weight: 600; background: rgba(255,255,255,0.1); padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.2); white-space: nowrap; height: 26px; display: flex; align-items: center; }
+
+        #win-toast-container { position: fixed; bottom: 50px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 13000; }
+        .win-toast { width: 300px; background: var(--win-surface); backdrop-filter: blur(10px); color: var(--text-main); border-left: 4px solid var(--win-accent); border-radius: 6px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); padding: 12px; display: flex; flex-direction: column; gap: 4px; animation: slideIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .win-toast.success { border-left-color: var(--success); } .win-toast.danger { border-left-color: var(--danger); } .win-toast.admin { border-left-color: var(--admin-color); }
+        .win-toast.warning { border-left-color: #ff9800; background: #fffde7; }
+        .win-toast-header { font-size: 11px; font-weight: bold; color: var(--text-muted); display: flex; justify-content: space-between; }
+        .win-toast-body { font-size: 12px; font-weight: 600; line-height: 1.4; }
+
+        .modal-overlay { box-shadow: 0 0 0 100vw rgba(0,0,0,0.7); }
+
+        /* ستايل الحسابات الفاخر (VIP) */
+        .vip-reports-body { background: var(--premium-dark); color: white; padding: 15px; }
+        .vip-card { background: linear-gradient(145deg, #1e1e1e, #2a2a2a); border: 1px solid #333; border-radius: 10px; padding: 15px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
+        .vip-card::before { content: ''; position: absolute; top: 0; left: -100%; width: 50%; height: 100%; background: linear-gradient(to right, transparent, rgba(255,255,255,0.05), transparent); transform: skewX(-20deg); animation: shine 3s infinite; }
+        .vip-gold { border: 1px solid var(--premium-gold); background: linear-gradient(145deg, #2a2410, #1a1608); box-shadow: 0 0 20px rgba(212, 175, 55, 0.15); }
+        .vip-title { font-size: 12px; color: #aaa; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 1px; }
+        .vip-value { font-size: 24px; font-weight: bold; }
+        .vip-value.green { color: #4caf50; } .vip-value.red { color: #f44336; } .vip-value.gold { color: var(--premium-gold); font-size: 32px; text-shadow: 0 0 10px rgba(212,175,55,0.3); }
+        .vip-table { width: 100%; color: #ccc; font-size: 12px; border-collapse: collapse; margin-top: 10px; }
+        .vip-table td { padding: 8px; border-bottom: 1px solid #333; }
+        .vip-table tr:last-child td { border-bottom: none; }
+        
+        @keyframes shine { 0% { left: -100%; } 20% { left: 200%; } 100% { left: 200%; } }
+        @keyframes slideIn { from { transform: translateX(120%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(120%); opacity: 0; } }
+        @media print { body * { visibility: hidden; } #receipt-content, #receipt-content * { visibility: visible; } #receipt-content { position: absolute; left: 0; top: 0; width: 80mm; font-family: monospace; color: #000; padding: 5mm; } }
+    </style>
+</head>
+<body>
+
+    <!-- نوافذ التأكيد والطباعة -->
+    <div id="win-receipt" class="win-window modal-overlay" style="top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; width: 350px; z-index: 15000;">
+        <div class="win-header" onmousedown="dragWindowStart(event, 'win-receipt')">
+            <div class="win-title">🧾 إيصال الدفع / المطبخ</div>
+            <div class="win-controls"><button class="win-ctrl-btn btn-close" onclick="closeWindow('win-receipt')">X</button></div>
+        </div>
+        <div class="win-body" style="background: #fff; color: #000; text-align: center; padding: 20px;">
+            <div id="receipt-content"></div>
+            <button class="btn-checkout" onclick="window.print()" style="margin-top: 15px; background: #333;">طباعة الفاتورة 🖨️</button>
+        </div>
+    </div>
+
+    <div id="win-confirm-dialog" class="win-window modal-overlay" style="display:none; width:350px; top:50%; left:50%; transform:translate(-50%, -50%); z-index:16000;">
+        <div class="win-header">
+            <div class="win-title">⚠️ تأكيد الإجراء</div>
+            <div class="win-controls"><button class="win-ctrl-btn btn-close" onclick="closeConfirm()">X</button></div>
+        </div>
+        <div class="win-body" style="text-align:center; padding: 20px;">
+            <p id="win-confirm-msg" style="margin-bottom:15px; font-size: 13px; font-weight:bold;"></p>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button class="btn-checkout" id="win-confirm-yes" style="background:var(--success); width:100px;">نعم متأكد</button>
+                <button class="btn-checkout" style="background:var(--danger); width:100px;" onclick="closeConfirm()">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة مصاريف المطعم (من الكاشير) -->
+    <div id="win-cashier-expense" class="win-window modal-overlay" style="display:none; width:340px; top:50%; left:50%; transform:translate(-50%, -50%); z-index:16000;">
+        <div class="win-header">
+            <div class="win-title">🏪 سحب مصاريف للمطعم (من الدرج)</div>
+            <div class="win-controls"><button class="win-ctrl-btn btn-close" onclick="closeWindow('win-cashier-expense')">X</button></div>
+        </div>
+        <div class="win-body" style="padding: 15px;">
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">* هذه النافذة مخصصة لمصاريف تشغيل المطعم (بضاعة، صيانة، الخ). لسحب سلفة شخصية، استخدم أيقونة "سلف الموظفين".</p>
+            <input type="text" id="in-cashier-exp-desc" class="win-input" placeholder="وصف المصروف (مثال: شراء أكياس)" style="width:100%; margin-bottom:10px;">
+            <input type="number" id="in-cashier-exp-amount" class="win-input" placeholder="المبلغ المسحوب" style="width:100%; margin-bottom:15px;">
+            <button class="btn-checkout" style="background:var(--danger);" onclick="submitRestaurantExpense()">تسجيل السحب</button>
+        </div>
+    </div>
+
+    <!-- شاشة الدخول -->
+    <div id="win-login-screen">
+        <div class="login-avatar">👑</div>
+        <h2 style="margin-bottom: 5px; font-weight: bold; color: var(--premium-gold); text-shadow: 0 0 10px rgba(212,175,55,0.5);">شيكو طاطس OS VIP</h2>
+        <p style="font-size: 13px; margin-bottom: 20px; color: #ccc;">نظام الإدارة المتقدم للحسابات والمبيعات</p>
+        <select class="login-select-user" id="in-login-user"></select>
+        <input type="password" class="login-pass-input" id="in-login-pass" placeholder="أدخل كلمة المرور 🔑">
+        <button class="btn-login" onclick="loginToSystem()">تسجيل الدخول للنظام</button>
+    </div>
+
+    <!-- سطح المكتب -->
+    <div id="desktop">
+        <div class="desktop-icon" onclick="openWindow('win-pos')"><span style="font-size: 32px;">🛒</span><span>الكاشير والمبيعات</span></div>
+        <div class="desktop-icon" onclick="openWindow('win-invoices')"><span style="font-size: 32px;">📄</span><span>أرشيف الفواتير</span></div>
+        <div class="desktop-icon" onclick="openWindow('win-inventory')"><span style="font-size: 32px;">📦</span><span>مخزون الخامات</span></div>
+        
+        <!-- الأيقونة الجديدة للسلف -->
+        <div class="desktop-icon" onclick="openStaffExpenses()"><span style="font-size: 32px;">💸</span><span style="color: #ff9800;">سلف الموظفين</span></div>
+
+        <!-- أيقونات الإدارة -->
+        <div class="desktop-icon admin-only-icon" onclick="openWindow('win-reports')" style="display:none;"><span style="font-size: 32px;">💎</span><span style="color: var(--premium-gold);">الحسابات الفاخرة</span></div>
+        <div class="desktop-icon admin-only-icon" onclick="openWindow('win-admin-panel')" style="display:none;"><span style="font-size: 32px;">💼</span><span style="color: #00bcd4;">غرفة التحكم</span></div>
+        <div class="desktop-icon admin-only-icon" onclick="openWindow('win-menu-manager')" style="display:none;"><span style="font-size: 32px;">🍔</span><span style="color: #4caf50;">إدارة المنيو</span></div>
+
+        <!-- 1. الكاشير -->
+        <div id="win-pos" class="win-window" style="top: 20px; right: 140px; display: none;">
+            <div class="win-header" onmousedown="dragWindowStart(event, 'win-pos')">
+                <div class="win-title">💻 الكاشير ونقاط البيع</div>
+                <div class="win-controls">
+                    <button class="win-ctrl-btn" onclick="minimizeWindow('win-pos')">—</button>
+                    <button class="win-ctrl-btn btn-close" onclick="closeWindow('win-pos')">X</button>
+                </div>
+            </div>
+            <div class="win-body">
+                <div class="pos-layout">
+                    <div class="pos-menu">
+                        <div class="cat-bar">
+                            <button class="cat-btn active" onclick="filterCategory('all', this)">كل المنيو</button>
+                            <button class="cat-btn" onclick="filterCategory('basic', this)">أساسي</button>
+                            <button class="cat-btn" onclick="filterCategory('saddad', this)">سداد</button>
+                            <button class="cat-btn" onclick="filterCategory('boom', this)">بوم</button>
+                            <button class="cat-btn" onclick="filterCategory('fridge', this)">ثلاجة</button>
+                            <button class="cat-btn" onclick="filterCategory('extra', this)">إضافات</button>
+                        </div>
+                        <div class="products-grid" id="pos-products-container"></div>
+                    </div>
+                    <div class="pos-cart">
+                        <div class="cart-title-bar">
+                            <span>سلة المشتريات</span>
+                            <button class="win-ctrl-btn" style="background:#424242; color:white; width:auto; padding:2px 8px; font-size:10px; border-radius:10px;" onclick="openWindow('win-cashier-expense')">سحب للمطعم 📤</button>
+                        </div>
+                        <div class="cart-items-list" id="cart-items-output"></div>
+                        <div class="cart-footer">
+                            <input type="text" class="win-input" id="in-order-notes" placeholder="📝 ملاحظات الطلب (بدون كاتشب...)" style="width:100%;">
+                            <div style="display:flex; justify-content:space-between; margin-top:2px;"><span>فرعي:</span><b id="lbl-subtotal">0.00 ج</b></div>
+                            <div style="display:flex; gap:6px; margin: 2px 0;">
+                                <input type="number" class="win-input" id="in-discount" placeholder="خصم (ج)" style="width:70px;" oninput="recalcTotals()">
+                                <select class="win-select" id="in-pay-method" style="flex:1;"><option value="cash">💵 نقدي</option><option value="visa">💳 فيزا</option></select>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; font-size:14px; border-top:1px dashed var(--win-border); padding-top:4px; font-weight:bold;">
+                                <span>الإجمالي:</span><b id="lbl-grand-total" style="color:var(--success); font-size:16px;">0.00 ج</b>
+                            </div>
+                            <div style="display:flex; gap:6px; margin-top:4px;">
+                                <button class="btn-checkout" onclick="printKitchen()" style="background:#555; width:40%;">بون مطبخ 👨‍🍳</button>
+                                <button class="btn-checkout" onclick="checkoutOrder()" style="width:60%;">تأكيد الفاتورة 🖨️</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. أرشيف الفواتير -->
+        <div id="win-invoices" class="win-window" style="top: 40px; right: 180px; display: none;">
+            <div class="win-header" onmousedown="dragWindowStart(event, 'win-invoices')">
+                <div class="win-title">📄 أرشيف الفواتير</div>
+                <div class="win-controls"><button class="win-ctrl-btn btn-close" onclick="closeWindow('win-invoices')">X</button></div>
+            </div>
+            <div class="win-body" style="width: 680px; height: 380px;">
+                <input type="text" class="win-input" id="in-search-invoice" placeholder="🔍 بحث برقم الفاتورة..." style="width:100%; margin-bottom:10px;" oninput="renderInvoicesUI()">
+                <table class="win-table">
+                    <thead><tr><th>رقم</th><th>الوقت</th><th>الكاشير</th><th>الأصناف</th><th>طريقة الدفع</th><th>الإجمالي</th></tr></thead>
+                    <tbody id="invoices-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 3. المخزون -->
+        <div id="win-inventory" class="win-window" style="top: 60px; right: 220px; display: none;">
+            <div class="win-header" onmousedown="dragWindowStart(event, 'win-inventory')">
+                <div class="win-title">📦 إدارة المخزون</div>
+                <div class="win-controls"><button class="win-ctrl-btn btn-close" onclick="closeWindow('win-inventory')">X</button></div>
+            </div>
+            <div class="win-body" style="width: 700px; height: 380px;">
+                <table class="win-table">
+                    <thead><tr><th>الخامة</th><th>الرصيد المتاح</th><th>الوحدة</th><th class="admin-only-column">تعديل المخزون للمدير</th></tr></thead>
+                    <tbody id="inventory-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 4. نافذة سلف الموظفين (الجديدة) -->
+        <div id="win-staff-expenses" class="win-window" style="top: 80px; right: 260px; display: none;">
+            <div class="win-header" style="background: #ff9800; color: white;" onmousedown="dragWindowStart(event, 'win-staff-expenses')">
+                <div class="win-title">💸 مصاريف وسلف الموظفين</div>
+                <div class="win-controls"><button class="win-ctrl-btn btn-close" style="color:white;" onclick="closeWindow('win-staff-expenses')">X</button></div>
+            </div>
+            <div class="win-body" style="width: 600px; height: auto; max-height: 450px;">
+                
+                <!-- قسم طلب السلفة للكاشير -->
+                <div id="cashier-loan-section" style="background:var(--win-surface); border:1px solid var(--win-border); padding:15px; border-radius:6px; margin-bottom:15px; text-align:center;">
+                    <h3 style="font-size:13px; margin-bottom:10px;">طلب سلفة شخصية (تسحب من الدرج وتخصم من حسابك)</h3>
+                    <input type="number" id="in-my-loan-amount" class="win-input" placeholder="أدخل مبلغ السلفة..." style="width:60%; margin-bottom:10px; font-size:14px; text-align:center;">
+                    <button class="btn-checkout" style="background:#ff9800; width:60%; display:block; margin:0 auto;" onclick="requestPersonalLoan()">تأكيد سحب السلفة</button>
+                </div>
+
+                <!-- قسم إدارة الديون للمدير -->
+                <div id="admin-debt-section" style="display:none;">
+                    <h3 style="font-size:13px; margin-bottom:10px; color:#d84315; border-bottom:2px solid #ffcc80; padding-bottom:5px;">📋 لوحة التحكم في ديون وسلف الموظفين</h3>
+                    <table class="win-table" style="margin-bottom:10px;">
+                        <thead><tr><th>الموظف</th><th>المرتب الأساسي</th><th>الديون (سلف)</th><th>إجراءات التسوية للمدير</th></tr></thead>
+                        <tbody id="staff-debt-tbody"></tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 5. الحسابات الفاخرة VIP -->
+        <div id="win-reports" class="win-window" style="top: 100px; right: 280px; display: none;">
+            <div class="win-header" style="background: var(--premium-dark); color: var(--premium-gold); border-bottom:1px solid #333;" onmousedown="dragWindowStart(event, 'win-reports')">
+                <div class="win-title">💎 التقارير المالية والأرباح (VIP Dashboard)</div>
+                <div class="win-controls"><button class="win-ctrl-btn btn-close" style="color:var(--premium-gold);" onclick="closeWindow('win-reports')">X</button></div>
+            </div>
+            <div class="win-body vip-reports-body" style="width: 700px; height: 500px;">
+                <div style="display: flex; gap: 10px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; border: 1px solid #333;">
+                    <label style="font-weight:bold; font-size:12px; align-self:center; color:#ccc;">تحديد الفترة الزمنية:</label>
+                    <select id="sel-report-date" class="win-select" style="flex: 1; background:#222; color:white; border:1px solid #444;" onchange="updateReportsUI()">
+                        <option value="today">اليوم الحالي (مباشر)</option>
+                        <option value="month">إجمالي أرباح الشهر</option>
+                        <option value="all">كل الأرباح (منذ التأسيس)</option>
+                    </select>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                    <div class="vip-card">
+                        <div class="vip-title">إجمالي الإيرادات</div>
+                        <div class="vip-value green" id="rep-sales">0.00 ج</div>
+                    </div>
+                    <div class="vip-card">
+                        <div class="vip-title">إجمالي التكاليف والمصروفات</div>
+                        <div class="vip-value red" id="rep-costs">0.00 ج</div>
+                    </div>
+                </div>
+
+                <div class="vip-card vip-gold" style="margin-bottom: 20px; padding: 20px;">
+                    <div class="vip-title" style="color:var(--premium-gold);">صافي الأرباح النهائي 💎</div>
+                    <div class="vip-value gold" id="rep-net">0.00 ج</div>
+                </div>
+                
+                <div class="vip-title" style="border-bottom:1px solid #444; padding-bottom:5px; margin-bottom:10px;">تفصيل التكاليف المخصومة:</div>
+                <table class="vip-table">
+                    <tbody>
+                        <tr><td>تكلفة البضاعة المباعة (الخامات):</td><td id="rep-cogs" style="color: #ff8a80; font-weight:bold; text-align:left;">0.00 ج</td></tr>
+                        <tr><td>مصاريف المطعم والنثريات:</td><td id="rep-expenses" style="color: #ff8a80; font-weight:bold; text-align:left;">0.00 ج</td></tr>
+                        <tr><td>رواتب الموظفين:</td><td id="rep-salaries" style="color: #ff8a80; font-weight:bold; text-align:left;">0.00 ج</td></tr>
+                        <tr><td>التكاليف الثابتة (إيجار/كهرباء):</td><td id="rep-fixed" style="color: #ff8a80; font-weight:bold; text-align:left;">0.00 ج</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- 6. غرفة التحكم -->
+        <div id="win-admin-panel" class="win-window" style="top: 120px; right: 300px; display: none;">
+            <div class="win-header" style="background: #00bcd4; color: white;" onmousedown="dragWindowStart(event, 'win-admin-panel')">
+                <div class="win-title">💼 غرفة التحكم الشاملة</div>
+                <div class="win-controls"><button class="win-ctrl-btn btn-close" style="color:white;" onclick="closeWindow('win-admin-panel')">X</button></div>
+            </div>
+            <div class="win-body" style="width: 850px; height: 480px; display: flex; gap: 10px;">
+                
+                <div style="flex: 1.2; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="background:var(--win-surface); border:1px solid var(--win-border); padding:10px; border-radius:6px; border-top:3px solid #2196f3;">
+                        <h3 style="font-size:12px; margin-bottom:10px;">👥 إضافة وتعديل الكاشير</h3>
+                        <div style="display:flex; gap:5px; margin-bottom:8px;">
+                            <input type="text" id="in-new-emp-name" class="win-input" placeholder="الاسم" style="flex:1;">
+                            <input type="text" id="in-new-emp-pass" class="win-input" placeholder="الباسورد" style="flex:1;">
+                            <input type="number" id="in-new-emp-salary" class="win-input" placeholder="المرتب" style="flex:1;">
+                        </div>
+                        <button class="btn-checkout" style="background:#2196f3; padding:5px;" onclick="addNewEmployee()">➕ إضافة</button>
+                        <table class="win-table" style="margin-top:10px;">
+                            <thead><tr><th>الموظف</th><th>المرتب</th><th>إجراء</th></tr></thead>
+                            <tbody id="admin-employees-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <div style="background:var(--win-surface); border:1px solid var(--win-border); padding:10px; border-radius:6px; border-top:3px solid #9c27b0;">
+                        <h3 style="font-size:12px; margin-bottom:10px;">🏢 التكاليف الثابتة (شهرياً)</h3>
+                        <div style="display:flex; gap:5px;">
+                            <input type="number" id="in-admin-rent" class="win-input" placeholder="الإيجار" style="flex:1;" oninput="saveAdminCosts()">
+                            <input type="number" id="in-admin-elec" class="win-input" placeholder="كهرباء وغاز" style="flex:1;" oninput="saveAdminCosts()">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="flex: 1; display:flex; flex-direction:column; gap:10px;">
+                    <div style="background:var(--win-surface); border:1px solid var(--win-border); padding:10px; border-radius:6px; border-top:3px solid #ff9800;">
+                        <h3 style="font-size:12px; margin-bottom:10px;">مراقبة الوردية الحية وتقفيل الموظف</h3>
+                        <table class="win-table">
+                            <thead><tr><th>الكاشير</th><th>المبيعات</th><th>التقفيل</th></tr></thead>
+                            <tbody id="admin-shift-tbody"></tbody>
+                        </table>
+                    </div>
+                    
+                    <div style="background:var(--win-surface); border:1px solid var(--win-border); padding:15px; border-radius:6px; text-align:center; border-top:3px solid var(--danger); margin-top:auto;">
+                        <h3 style="font-size:12px; margin-bottom:10px; color:var(--danger);">🔄 تقفيل اليوم بالكامل لأرشفة الحسابات</h3>
+                        <button class="btn-checkout" style="background:var(--danger);" onclick="closeCurrentDay()">أرشفة اليوم وتصفير السيستم ☀️</button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- 7. إدارة المنيو -->
+        <div id="win-menu-manager" class="win-window" style="top: 140px; right: 320px; display: none;">
+            <div class="win-header" style="background: #4caf50; color: white;" onmousedown="dragWindowStart(event, 'win-menu-manager')">
+                <div class="win-title">🍔 إدارة المنيو وتكلفة الأصناف</div>
+                <div class="win-controls"><button class="win-ctrl-btn btn-close" style="color:white;" onclick="closeWindow('win-menu-manager')">X</button></div>
+            </div>
+            <div class="win-body" style="width: 550px; height: 380px;">
+                <div style="background:var(--win-surface); border:1px solid var(--win-border); padding:10px; border-radius:6px; margin-bottom:10px;">
+                    <input type="text" id="in-new-prod-name" class="win-input" placeholder="اسم الصنف" style="width:100%; margin-bottom:6px;">
+                    <div style="display:flex; gap:6px; margin-bottom:6px;">
+                        <input type="number" id="in-new-prod-price" class="win-input" placeholder="سعر البيع" style="flex:1;">
+                        <input type="number" id="in-new-prod-cost" class="win-input" placeholder="تكلفة الخامة" style="flex:1;">
+                        <select id="in-new-prod-cat" class="win-select" style="flex:1;">
+                            <option value="basic">أساسي</option><option value="saddad">سداد</option>
+                            <option value="boom">بوم</option><option value="fridge">ثلاجة</option><option value="extra">إضافات</option>
+                        </select>
+                    </div>
+                    <button class="btn-checkout" style="background:#4caf50;" onclick="addNewProduct()">إضافة الصنف</button>
+                </div>
+                <table class="win-table">
+                    <thead><tr><th>الصنف</th><th>السعر</th><th>التكلفة</th><th>القسم</th></tr></thead>
+                    <tbody id="menu-manager-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- شريط المهام المدمج (Taskbar) بتعديل الأبعاد -->
+    <div id="taskbar">
+        <div class="tb-controls">
+            <button class="tb-btn" id="btn-start-shift" onclick="startShift()">▶ بدء الشيفت</button>
+            <button class="tb-btn danger" id="btn-end-shift" style="display:none;" onclick="endMyShift()">⏹ إنهاء الشيفت</button>
+            <div class="tb-timer" id="shift-timer-container" style="display:none;">
+                <span id="shift-timer" style="color:#4fc3f7;">⏱️ 00:00:00</span>
+            </div>
+            <div class="tb-timer" style="border-color:transparent;">
+                👤 <b id="lbl-active-user-name" style="margin:0 4px; color:#ffb3b5;">-</b> 
+                <span style="cursor:pointer; color:#ff5252; margin-right:5px;" onclick="logoutAndLockScreen()">[قفل 🔒]</span>
+            </div>
+        </div>
+        <div style="font-size:12px; font-weight:700;" id="win-clock-label">--:--:--</div>
+    </div>
+
+    <div id="win-toast-container"></div>
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playClickSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const oscillator = audioCtx.createOscillator(); const gainNode = audioCtx.createGain();
+            oscillator.type = 'sine'; oscillator.frequency.setValueAtTime(800, audioCtx.currentTime); 
+            gainNode.gain.setValueAtTime(0.03, audioCtx.currentTime); 
+            oscillator.connect(gainNode); gainNode.connect(audioCtx.destination);
+            oscillator.start(); gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
+            oscillator.stop(audioCtx.currentTime + 0.1);
+        }
+
+        document.addEventListener('click', (e) => {
+            if(e.target.tagName === 'BUTTON' || e.target.closest('.product-card') || e.target.closest('.desktop-icon') || e.target.classList.contains('cat-btn')) playClickSound();
+        });
+
+        // قاعدة البيانات
+        let productsData = [
+            { id: 'b1', name: 'شيكو أساسي - كبير', price: 40, cost: 25, category: 'basic' }, { id: 'b2', name: 'شيكو أساسي - لارج', price: 50, cost: 30, category: 'basic' },
+            { id: 'b3', name: 'شيكو أساسي - جامبو', price: 65, cost: 40, category: 'basic' }, { id: 's1', name: 'شامي سداد', price: 30, cost: 15, category: 'saddad' },
+            { id: 's2', name: 'فينو سداد', price: 25, cost: 12, category: 'saddad' }, { id: 'bm1', name: 'شيكو تريبس', price: 90, cost: 50, category: 'boom' },
+            { id: 'f1', name: 'مياه صغيرة', price: 5, cost: 3, category: 'fridge' }, { id: 'f4', name: 'بيبسي', price: 20, cost: 14, category: 'fridge' },
+            { id: 'ex1', name: 'إضافة صوص', price: 10, cost: 4, category: 'extra' }, { id: 'ex2', name: 'إضافة بطاطس', price: 15, cost: 5, category: 'extra' }
+        ];
+
+        let inventorySystem = {
+            potato: { id: 'potato', name: 'بطاطس فريش', stock: 120000, unit: 'جرام' }, chicken: { id: 'chicken', name: 'استربس', stock: 450, unit: 'قطعة' },
+            bread: { id: 'bread', name: 'خبز', stock: 500, unit: 'رغيف' }, pepsi: { id: 'pepsi', name: 'بيبسي', stock: 240, unit: 'علبة' }
+        };
+
+        let staffDatabase = {
+            Admin: { id: 'Admin', name: 'المدير العام', password: '1', role: 'admin', salary: 0, debt: 0, ordersCount: 0, totalSales: 0 },
+            Marwan: { id: 'Marwan', name: 'مروان', password: '1', role: 'cashier', salary: 3000, debt: 0, ordersCount: 0, totalSales: 0 }
+        };
+
+        let systemFinances = { 
+            manualExpenses: 0, totalSalesGlobal: 0, totalCOGS: 0, 
+            monthlyRent: 0, monthlyElectricity: 0, allTimeSales: 0, allTimeCOGS: 0, allTimeExpenses: 0 
+        };
+        let invoicesArchive = []; let shiftLogs = []; let dailyReports = []; 
+
+        function loadSavedData() {
+            let saved = localStorage.getItem('ShikoVIP_Data');
+            if(saved) {
+                let d = JSON.parse(saved);
+                productsData = d.products || productsData; inventorySystem = d.inventory || inventorySystem;
+                staffDatabase = d.staff || staffDatabase; systemFinances = d.finances || systemFinances;
+                invoicesArchive = d.invoices || invoicesArchive; shiftLogs = d.shiftLogs || shiftLogs; dailyReports = d.dailyReports || dailyReports;
+            }
+        }
+        function saveAllData() {
+            localStorage.setItem('ShikoVIP_Data', JSON.stringify({
+                products: productsData, inventory: inventorySystem, staff: staffDatabase, 
+                finances: systemFinances, invoices: invoicesArchive, shiftLogs: shiftLogs, dailyReports: dailyReports
+            }));
+        }
+
+        loadSavedData();
+
+        let currentActiveUser = "مروان"; let currentUserRole = "cashier"; let currentCart = [];
+        let subtotalGlobal = 0, totalToPayGlobal = 0;
+        let shiftStartTime = null, shiftTimerInterval = null;
+        let confirmActionCb = null;
+
+        function renderLoginSelect() {
+            let sel = document.getElementById('in-login-user'); sel.innerHTML = '';
+            for(let key in staffDatabase) {
+                let color = staffDatabase[key].role === 'admin' ? 'var(--premium-gold)' : 'white';
+                let icon = staffDatabase[key].role === 'admin' ? '👑 ' : '👤 ';
+                sel.innerHTML += `<option value="${key}" style="color:${color};">${icon}${staffDatabase[key].name}</option>`;
+            }
+        }
+        renderLoginSelect();
+
+        function openConfirm(msg, callback) {
+            document.getElementById('win-confirm-msg').innerText = msg; confirmActionCb = callback;
+            document.getElementById('win-confirm-dialog').style.display = 'flex';
+        }
+        function closeConfirm() { document.getElementById('win-confirm-dialog').style.display = 'none'; }
+        document.getElementById('win-confirm-yes').onclick = function() { if(confirmActionCb) confirmActionCb(); closeConfirm(); };
+
+        function showWindowsToast(title, bodyText, type = 'success') {
+            const container = document.getElementById('win-toast-container');
+            const toast = document.createElement('div'); toast.className = `win-toast ${type}`;
+            toast.innerHTML = `<div class="win-toast-header"><span>🔔 إشعار النظام</span></div><div class="win-toast-body">${bodyText}</div>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.style.animation = "slideOut 0.3s forwards"; setTimeout(() => toast.remove(), 300); }, 4000);
+        }
+
+        function checkPendingDebts() {
+            let hasDebt = false;
+            for(let k in staffDatabase) { if(staffDatabase[k].debt > 0 && staffDatabase[k].role === 'cashier') hasDebt = true; }
+            if(hasDebt) showWindowsToast('تنبيه ديون!', 'يوجد موظفين عليهم ديون / سلف معلقة، راجع أيقونة سلف الموظفين لتسويتها.', 'warning');
+        }
+
+        function loginToSystem() {
+            const userKey = document.getElementById('in-login-user').value;
+            const pass = document.getElementById('in-login-pass').value;
+            if (staffDatabase[userKey] && staffDatabase[userKey].password === pass) {
+                currentActiveUser = staffDatabase[userKey].name; currentUserRole = staffDatabase[userKey].role;
+                document.getElementById('lbl-active-user-name').innerText = currentActiveUser;
+                document.getElementById('win-login-screen').style.opacity = '0';
+                setTimeout(() => { document.getElementById('win-login-screen').style.display = 'none'; document.getElementById('in-login-pass').value = ''; }, 400);
+                
+                let adminIcons = document.querySelectorAll('.admin-only-icon'); let adminCols = document.querySelectorAll('.admin-only-column');
+                if(currentUserRole === 'admin') {
+                    adminIcons.forEach(el => el.style.display = 'flex'); adminCols.forEach(el => el.style.display = 'table-cell');
+                    showWindowsToast('دخول الإدارة', `مرحباً بك يا فندم في النظام المتقدم.`, 'admin');
+                    checkPendingDebts();
+                } else {
+                    adminIcons.forEach(el => el.style.display = 'none'); adminCols.forEach(el => el.style.display = 'none');
+                    showWindowsToast('دخول الكاشير', `مرحباً ${currentActiveUser}، لا تنسى بدء الشيفت.`);
+                }
+                
+                document.getElementById('in-admin-rent').value = systemFinances.monthlyRent || '';
+                document.getElementById('in-admin-elec').value = systemFinances.monthlyElectricity || '';
+                
+                openWindow('win-pos'); renderProducts(); renderMenuManager(); renderInventoryUI(); renderAdminPanelUI(); populateReportDates(); updateReportsUI(); renderStaffDebts();
+            } else { showWindowsToast('خطأ', 'كلمة المرور غير صحيحة!', 'danger'); }
+        }
+
+        function startShift() {
+            if (shiftStartTime) return;
+            shiftStartTime = new Date();
+            document.getElementById('btn-start-shift').style.display = 'none';
+            document.getElementById('shift-timer-container').style.display = 'flex';
+            document.getElementById('btn-end-shift').style.display = 'inline-block';
+            shiftTimerInterval = setInterval(updateShiftTimer, 1000); 
+            showWindowsToast('بدء الشيفت', 'تم تشغيل العداد بنجاح، بالتوفيق!');
+        }
+        function endMyShift() {
+            if(!shiftStartTime) return;
+            clearInterval(shiftTimerInterval);
+            shiftStartTime = null;
+            document.getElementById('shift-timer-container').style.display = 'none'; 
+            document.getElementById('btn-end-shift').style.display = 'none';
+            document.getElementById('btn-start-shift').style.display = 'inline-block';
+            document.getElementById('shift-timer').innerText = `⏱️ 00:00:00`;
+            showWindowsToast('إنهاء الشيفت', 'تم إيقاف الشيفت وحفظ بياناتك.', 'success');
+        }
+        function updateShiftTimer() {
+            if (!shiftStartTime) return; let diff = Math.floor((new Date() - shiftStartTime) / 1000);
+            let h = String(Math.floor(diff / 3600)).padStart(2, '0'), m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0'), s = String(diff % 60).padStart(2, '0');
+            document.getElementById('shift-timer').innerText = `⏱️ ${h}:${m}:${s}`;
+        }
+        function logoutAndLockScreen() { document.querySelectorAll('.win-window').forEach(w => w.style.display = 'none'); document.getElementById('win-login-screen').style.opacity = '1'; document.getElementById('win-login-screen').style.display = 'flex'; }
+
+        function openWindow(id) { document.getElementById(id).style.display = 'flex'; }
+        function closeWindow(id) { document.getElementById(id).style.display = 'none'; }
+        function minimizeWindow(id) { document.getElementById(id).style.display = 'none'; }
+
+        // المبيعات
+        function renderProducts(filter = 'all') {
+            const container = document.getElementById('pos-products-container'); container.innerHTML = '';
+            const filtered = filter === 'all' ? productsData : productsData.filter(p => p.category === filter);
+            filtered.forEach(p => {
+                container.innerHTML += `<div class="product-card" onclick="addToCart('${p.id}')"><div style="font-size:11px; font-weight:700;">${p.name}</div><div style="font-size:13px; font-weight:800; color:var(--win-accent); margin-top:10px;">${p.price} ج</div></div>`;
+            });
+        }
+        function filterCategory(cat, btn) { document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); renderProducts(cat); }
+
+        function addToCart(id) {
+            const p = productsData.find(prod => prod.id === id); const idx = currentCart.findIndex(item => item.product.id === id);
+            if(idx > -1) currentCart[idx].qty += 1; else currentCart.push({ product: p, qty: 1 }); buildCartUI();
+        }
+        function changeQty(idx, delta) { currentCart[idx].qty += delta; if(currentCart[idx].qty <= 0) currentCart.splice(idx, 1); buildCartUI(); }
+
+        function buildCartUI() {
+            const container = document.getElementById('cart-items-output');
+            if(currentCart.length === 0) { container.innerHTML = `<div style="text-align:center; color:var(--text-muted); margin-top:60px;">السلة فارغة.</div>`; recalcTotals(); return; }
+            container.innerHTML = '';
+            currentCart.forEach((item, idx) => {
+                container.innerHTML += `<div class="cart-row"><div class="cart-row-top"><span style="font-weight:700; width:55%; font-size:11px;">${item.product.name}</span><div><button class="qty-btn" onclick="changeQty(${idx}, -1)">-</button><span style="margin:0 4px; display:inline-block; width:12px; text-align:center;">${item.qty}</span><button class="qty-btn" onclick="changeQty(${idx}, 1)">+</button></div><b style="width:20%; text-align:left;">${(item.product.price * item.qty)} ج</b></div></div>`;
+            }); recalcTotals();
+        }
+        function recalcTotals() {
+            subtotalGlobal = 0; currentCart.forEach(i => subtotalGlobal += (i.product.price * i.qty));
+            let discount = parseFloat(document.getElementById('in-discount').value) || 0;
+            totalToPayGlobal = Math.max(0, subtotalGlobal - discount);
+            document.getElementById('lbl-subtotal').innerText = subtotalGlobal + ' ج'; document.getElementById('lbl-grand-total').innerText = totalToPayGlobal + ' ج';
+        }
+
+        function printKitchen() {
+            if(currentCart.length === 0) return; let notes = document.getElementById('in-order-notes').value;
+            let html = `<h3 style="margin-bottom:10px;">👨‍🍳 بون المطبخ</h3><hr><ul style="text-align:right; list-style:none; padding:0; margin:10px 0;">`;
+            currentCart.forEach(item => { html += `<li style="font-size:16px; font-weight:bold; margin-bottom:8px;">[ ${item.qty} ] x ${item.product.name}</li>`; });
+            html += `</ul>`; if (notes) html += `<hr><p style="text-align:right; font-weight:bold;">📝 ملاحظات: ${notes}</p>`;
+            document.getElementById('receipt-content').innerHTML = html; openWindow('win-receipt');
+        }
+
+        function checkoutOrder() {
+            if(currentCart.length === 0) return; let orderNum = "SH-" + Math.floor(1000 + Math.random() * 9000); let notes = document.getElementById('in-order-notes').value;
+            let method = document.getElementById('in-pay-method').options[document.getElementById('in-pay-method').selectedIndex].text;
+            
+            invoicesArchive.unshift({ id: orderNum, time: new Date().toLocaleTimeString('ar-EG'), user: currentActiveUser, method: method, items: currentCart.map(c => `${c.product.name}(${c.qty})`).join(' + '), total: totalToPayGlobal });
+
+            let totalOrderCost = 0; currentCart.forEach(item => { totalOrderCost += (item.product.cost * item.qty); });
+
+            let empKey = Object.keys(staffDatabase).find(k => staffDatabase[k].name === currentActiveUser);
+            if(empKey) { staffDatabase[empKey].ordersCount++; staffDatabase[empKey].totalSales += totalToPayGlobal; }
+            
+            systemFinances.totalSalesGlobal += totalToPayGlobal; systemFinances.allTimeSales += totalToPayGlobal;
+            systemFinances.totalCOGS += totalOrderCost; systemFinances.allTimeCOGS += totalOrderCost;
+
+            let html = `<h3>🍟 شيكو طاطس VIP 🍟</h3><p>رقم: ${orderNum} | كاشير: ${currentActiveUser}</p><hr>`;
+            currentCart.forEach(item => { html += `<div style="display:flex; justify-content:space-between; font-size:14px; margin-bottom:4px;"><span>${item.product.name} x${item.qty}</span><span>${item.product.price * item.qty} ج</span></div>`; });
+            html += `<hr><h3>الإجمالي: ${totalToPayGlobal} ج</h3>`; if(notes) html += `<p>ملاحظات: ${notes}</p>`; html += `<p style="margin-top:10px; font-size:12px;">شكراً لزيارتكم!</p>`;
+            
+            document.getElementById('receipt-content').innerHTML = html; openWindow('win-receipt');
+            currentCart = []; buildCartUI(); document.getElementById('in-discount').value = ''; document.getElementById('in-order-notes').value = ''; 
+            
+            saveAllData(); renderInvoicesUI(); renderAdminPanelUI(); updateReportsUI();
+        }
+
+        function renderInvoicesUI() {
+            const tbody = document.getElementById('invoices-tbody'); tbody.innerHTML = '';
+            let term = document.getElementById('in-search-invoice').value.toLowerCase();
+            let filtered = invoicesArchive.filter(inv => inv.id.toLowerCase().includes(term));
+            filtered.forEach(inv => { tbody.innerHTML += `<tr><td>${inv.id}</td><td>${inv.time}</td><td>${inv.user}</td><td style="max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${inv.items}</td><td>${inv.method}</td><td>${inv.total} ج</td></tr>`; });
+        }
+
+        // سحب للمطعم فقط
+        function submitRestaurantExpense() {
+            let desc = document.getElementById('in-cashier-exp-desc').value;
+            let amount = parseFloat(document.getElementById('in-cashier-exp-amount').value);
+            if(!desc || !amount) { showWindowsToast('خطأ', 'أدخل الوصف والمبلغ', 'danger'); return; }
+            systemFinances.manualExpenses += amount; systemFinances.allTimeExpenses += amount;
+            document.getElementById('in-cashier-exp-desc').value = ''; document.getElementById('in-cashier-exp-amount').value = '';
+            closeWindow('win-cashier-expense'); saveAllData(); updateReportsUI();
+            showWindowsToast('تم سحب للمطعم', `تم خصم ${amount} ج من الإيرادات لصالح: ${desc}`, 'admin');
+        }
+
+        // --- نظام السلف والموظفين الجديد ---
+        function openStaffExpenses() {
+            openWindow('win-staff-expenses');
+            if(currentUserRole === 'admin') {
+                document.getElementById('cashier-loan-section').style.display = 'none';
+                document.getElementById('admin-debt-section').style.display = 'block';
+                renderStaffDebts();
+            } else {
+                document.getElementById('cashier-loan-section').style.display = 'block';
+                document.getElementById('admin-debt-section').style.display = 'none';
+            }
+        }
+
+        function requestPersonalLoan() {
+            let amount = parseFloat(document.getElementById('in-my-loan-amount').value);
+            if(!amount || amount <= 0) { showWindowsToast('خطأ', 'يرجى إدخال مبلغ صحيح للسلفة', 'danger'); return; }
+            let empKey = Object.keys(staffDatabase).find(k => staffDatabase[k].name === currentActiveUser);
+            if(empKey) {
+                openConfirm(`هل أنت متأكد من سحب سلفة بقيمة ${amount} ج وتسجيلها كدين عليك؟`, () => {
+                    staffDatabase[empKey].debt += amount;
+                    document.getElementById('in-my-loan-amount').value = '';
+                    saveAllData(); renderStaffDebts();
+                    showWindowsToast('تم تسجيل السلفة', `تم تسجيل دين عليك بقيمة ${amount} ج. لا تنسى أخذ المبلغ من الدرج.`, 'warning');
+                });
+            }
+        }
+
+        function renderStaffDebts() {
+            const tbody = document.getElementById('staff-debt-tbody'); tbody.innerHTML = '';
+            for(let key in staffDatabase) {
+                if(staffDatabase[key].role === 'cashier') {
+                    let d = staffDatabase[key].debt;
+                    let actions = d > 0 ? `<button class="win-ctrl-btn" style="background:#4caf50; color:white; width:auto; padding:2px 6px; border-radius:4px;" onclick="settleDebtCash('${key}')">تم السداد كاش</button> <button class="win-ctrl-btn" style="background:var(--danger); color:white; width:auto; padding:2px 6px; border-radius:4px;" onclick="settleDebtSalary('${key}')">خصم من المرتب</button>` : `<span style="color:var(--text-muted);">لا توجد ديون</span>`;
+                    tbody.innerHTML += `<tr><td><b>${staffDatabase[key].name}</b></td><td>${staffDatabase[key].salary} ج</td><td style="color:${d>0?'var(--danger)':'var(--success)'}; font-weight:bold;">${d} ج</td><td><div style="display:flex; gap:5px; justify-content:flex-end;">${actions}</div></td></tr>`;
+                }
+            }
+        }
+
+        function settleDebtCash(key) {
+            let d = staffDatabase[key].debt;
+            openConfirm(`تأكيد استلام ${d} ج كاش من ${staffDatabase[key].name} وإرجاعهم للدرج؟`, () => {
+                staffDatabase[key].debt = 0; saveAllData(); renderStaffDebts(); renderAdminPanelUI();
+                showWindowsToast('تم السداد', 'تم تصفية الدين نقداً.', 'success');
+            });
+        }
+
+        function settleDebtSalary(key) {
+            let d = staffDatabase[key].debt;
+            openConfirm(`تأكيد خصم ${d} ج من مرتب ${staffDatabase[key].name} لتسوية الدين؟ (سيقل المرتب تلقائياً)`, () => {
+                staffDatabase[key].salary -= d;
+                if(staffDatabase[key].salary < 0) staffDatabase[key].salary = 0;
+                staffDatabase[key].debt = 0; saveAllData(); renderStaffDebts(); renderAdminPanelUI(); updateReportsUI();
+                showWindowsToast('تم الخصم', 'تم خصم الدين من المرتب وتحديث البيانات.', 'admin');
+            });
+        }
+
+        // الإدارة
+        function saveAdminCosts() {
+            systemFinances.monthlyRent = parseFloat(document.getElementById('in-admin-rent').value) || 0;
+            systemFinances.monthlyElectricity = parseFloat(document.getElementById('in-admin-elec').value) || 0;
+            saveAllData(); updateReportsUI();
+        }
+
+        function renderAdminPanelUI() {
+            const shiftBody = document.getElementById('admin-shift-tbody'); shiftBody.innerHTML = '';
+            const empBody = document.getElementById('admin-employees-tbody'); empBody.innerHTML = '';
+
+            for(let key in staffDatabase) {
+                if(staffDatabase[key].role === 'cashier') {
+                    shiftBody.innerHTML += `<tr><td>${staffDatabase[key].name}</td><td style="color:var(--success); font-weight:bold;">${staffDatabase[key].totalSales} ج</td><td><button class="cat-btn" style="background:var(--win-accent); color:white; padding:4px 8px;" onclick="endCashier('${key}')">تصفير الوردية</button></td></tr>`;
+                    empBody.innerHTML += `<tr><td>${staffDatabase[key].name}</td><td>${staffDatabase[key].salary} ج</td><td><button class="win-ctrl-btn" style="background:var(--danger); color:white; padding:2px 8px; border-radius:4px; width:auto;" onclick="removeEmployee('${key}')">حذف</button></td></tr>`;
+                }
+            }
+        }
+        
+        function addNewEmployee() {
+            let name = document.getElementById('in-new-emp-name').value; let pass = document.getElementById('in-new-emp-pass').value; let sal = parseFloat(document.getElementById('in-new-emp-salary').value) || 0;
+            if(!name || !pass) { showWindowsToast('خطأ', 'أدخل اسم وباسورد!', 'danger'); return; }
+            let key = 'emp_' + Math.floor(Math.random()*1000);
+            staffDatabase[key] = { id: key, name: name, password: pass, role: 'cashier', salary: sal, debt: 0, ordersCount: 0, totalSales: 0 };
+            document.getElementById('in-new-emp-name').value=''; document.getElementById('in-new-emp-pass').value=''; document.getElementById('in-new-emp-salary').value='';
+            saveAllData(); renderAdminPanelUI(); renderLoginSelect(); updateReportsUI(); renderStaffDebts();
+            showWindowsToast('نجاح', `تم إضافة ${name}`);
+        }
+
+        function removeEmployee(key) { openConfirm(`حذف الموظف ${staffDatabase[key].name}؟`, () => { delete staffDatabase[key]; saveAllData(); renderAdminPanelUI(); renderLoginSelect(); updateReportsUI(); showWindowsToast('حذف', 'تم حذف الموظف.', 'admin'); }); }
+        function endCashier(key) { openConfirm(`استلام مبلغ ${staffDatabase[key].totalSales} ج وتصفير إيراد ${staffDatabase[key].name}؟`, () => { staffDatabase[key].ordersCount = 0; staffDatabase[key].totalSales = 0; saveAllData(); renderAdminPanelUI(); showWindowsToast('تم', 'تم تصفير حساب الكاشير.', 'success'); }); }
+
+        function closeCurrentDay() {
+            openConfirm("⚠️ سيتم أرشفة الإيرادات والمصروفات الحالية في تقرير مالي منفصل وتصفير العدادات لبدء يوم جديد. متأكد؟", () => {
+                let totalSalaries = 0; for(let k in staffDatabase) { if(staffDatabase[k].role === 'cashier') totalSalaries += (staffDatabase[k].salary/30); } // حساب مرتب يومي تقريبي
+                let dailyFixed = (systemFinances.monthlyRent / 30) + (systemFinances.monthlyElectricity / 30);
+                
+                let netProfit = systemFinances.totalSalesGlobal - (systemFinances.totalCOGS + totalSalaries + systemFinances.manualExpenses + dailyFixed);
+
+                dailyReports.unshift({
+                    date: new Date().toLocaleDateString('ar-EG'), month: new Date().getMonth() + 1, year: new Date().getFullYear(),
+                    sales: systemFinances.totalSalesGlobal, cogs: systemFinances.totalCOGS, expenses: systemFinances.manualExpenses, salaries: totalSalaries, fixed: dailyFixed, netProfit: netProfit
+                });
+
+                systemFinances.totalSalesGlobal = 0; systemFinances.totalCOGS = 0; systemFinances.manualExpenses = 0;
+                for(let k in staffDatabase) { if(staffDatabase[k].role === 'cashier') { staffDatabase[k].ordersCount = 0; staffDatabase[k].totalSales = 0; } }
+                
+                saveAllData(); updateReportsUI(); renderAdminPanelUI(); populateReportDates();
+                showWindowsToast('نجاح الأرشفة', 'تم أرشفة اليوم وتصفير العدادات بنجاح', 'admin');
+            });
+        }
+
+        // الحسابات VIP
+        function populateReportDates() { }
+
+        function updateReportsUI() {
+            let selValue = document.getElementById('sel-report-date').value;
+            let data = { sales: 0, cogs: 0, expenses: 0, salaries: 0, fixed: 0 };
+
+            if(selValue === 'today') {
+                let totalSalaries = 0; for(let k in staffDatabase) { if(staffDatabase[k].role === 'cashier') totalSalaries += (staffDatabase[k].salary/30); } // استقطاع يومي للراتب
+                let dailyFixed = (systemFinances.monthlyRent / 30) + (systemFinances.monthlyElectricity / 30);
+                data.sales = systemFinances.totalSalesGlobal; data.cogs = systemFinances.totalCOGS; data.expenses = systemFinances.manualExpenses; data.salaries = totalSalaries; data.fixed = dailyFixed;
+            } else if (selValue === 'month') {
+                let currentMonth = new Date().getMonth() + 1; let currentYear = new Date().getFullYear();
+                dailyReports.forEach(r => { if(r.month === currentMonth && r.year === currentYear) { data.sales += r.sales; data.cogs += r.cogs; data.expenses += r.expenses; data.salaries += r.salaries; data.fixed += r.fixed; } });
+                let dailyFixed = (systemFinances.monthlyRent / 30) + (systemFinances.monthlyElectricity / 30); let totalSalaries = 0; for(let k in staffDatabase) { if(staffDatabase[k].role === 'cashier') totalSalaries += (staffDatabase[k].salary/30); }
+                data.sales += systemFinances.totalSalesGlobal; data.cogs += systemFinances.totalCOGS; data.expenses += systemFinances.manualExpenses; data.salaries += totalSalaries; data.fixed += dailyFixed;
+            } else {
+                dailyReports.forEach(r => { data.sales += r.sales; data.cogs += r.cogs; data.expenses += r.expenses; data.salaries += r.salaries; data.fixed += r.fixed; });
+                let dailyFixed = (systemFinances.monthlyRent / 30) + (systemFinances.monthlyElectricity / 30); let totalSalaries = 0; for(let k in staffDatabase) { if(staffDatabase[k].role === 'cashier') totalSalaries += (staffDatabase[k].salary/30); }
+                data.sales += systemFinances.totalSalesGlobal; data.cogs += systemFinances.totalCOGS; data.expenses += systemFinances.manualExpenses; data.salaries += totalSalaries; data.fixed += dailyFixed;
+            }
+
+            let totalCosts = data.cogs + data.salaries + data.expenses + data.fixed;
+            let net = data.sales - totalCosts;
+
+            document.getElementById('rep-sales').innerText = data.sales.toFixed(2) + ' ج';
+            document.getElementById('rep-costs').innerText = totalCosts.toFixed(2) + ' ج';
+            document.getElementById('rep-net').innerText = net.toFixed(2) + ' ج';
+            
+            document.getElementById('rep-cogs').innerText = data.cogs.toFixed(2) + ' ج'; document.getElementById('rep-expenses').innerText = data.expenses.toFixed(2) + ' ج';
+            document.getElementById('rep-salaries').innerText = data.salaries.toFixed(2) + ' ج (معدل يومي)'; document.getElementById('rep-fixed').innerText = data.fixed.toFixed(2) + ' ج (معدل يومي)';
+        }
+
+        function renderMenuManager() { const tbody = document.getElementById('menu-manager-tbody'); tbody.innerHTML = ''; productsData.forEach(p => { tbody.innerHTML += `<tr><td>${p.name}</td><td style="color:var(--success); font-weight:bold;">${p.price} ج</td><td style="color:var(--danger);">${p.cost} ج</td><td>${p.category}</td></tr>`; }); }
+        function addNewProduct() {
+            let name = document.getElementById('in-new-prod-name').value; let price = parseInt(document.getElementById('in-new-prod-price').value); let cost = parseInt(document.getElementById('in-new-prod-cost').value); let cat = document.getElementById('in-new-prod-cat').value;
+            if(!name || !price || !cost) return;
+            productsData.push({ id: 'n'+Math.floor(Math.random()*1000), name: name, price: price, cost: cost, category: cat });
+            document.getElementById('in-new-prod-name').value = ''; document.getElementById('in-new-prod-price').value = ''; document.getElementById('in-new-prod-cost').value = '';
+            saveAllData(); renderMenuManager(); renderProducts(); showWindowsToast('نجاح', 'تمت إضافة الصنف.');
+        }
+
+        function renderInventoryUI() { const tbody = document.getElementById('inventory-tbody'); tbody.innerHTML = ''; for(let key in inventorySystem) { let item = inventorySystem[key]; let adminHtml = currentUserRole === 'admin' ? `<td><div style="display:flex; gap:4px;"><input type="number" id="in-adj-${item.id}" class="win-input" style="width:50px; padding:2px;"><button class="win-ctrl-btn" onclick="adjStock('${item.id}', 1)" style="background:var(--success); color:white; width:22px;">+</button><button class="win-ctrl-btn" onclick="adjStock('${item.id}', -1)" style="background:var(--danger); color:white; width:22px;">-</button></div></td>` : '<td class="admin-only-column" style="display:none;"></td>'; tbody.innerHTML += `<tr><td><b>${item.name}</b></td><td style="color:#00bcd4; font-weight:bold;">${item.stock}</td><td>${item.unit}</td>${adminHtml}</tr>`; } }
+        function adjStock(id, dir) { let val = parseInt(document.getElementById(`in-adj-${id}`).value); if(val>0) { inventorySystem[id].stock += (val*dir); document.getElementById(`in-adj-${id}`).value=''; saveAllData(); renderInventoryUI(); } }
+
+        let draggedElement = null, offsetX = 0, offsetY = 0;
+        function dragWindowStart(e, id) { draggedElement = document.getElementById(id); document.querySelectorAll('.win-window').forEach(w => { if(!w.classList.contains('modal-overlay')) w.style.zIndex = 5; }); if(!draggedElement.classList.contains('modal-overlay')) draggedElement.style.zIndex = 10; const rect = draggedElement.getBoundingClientRect(); offsetX = e.clientX - rect.left; offsetY = e.clientY - rect.top; document.onmousemove = dragWindowElement; document.onmouseup = stopDraggingWindow; }
+        function dragWindowElement(e) { if (!draggedElement || draggedElement.classList.contains('modal-overlay')) return; draggedElement.style.left = (e.clientX - offsetX) + 'px'; draggedElement.style.top = (e.clientY - offsetY) + 'px'; if (parseInt(draggedElement.style.top) < 0) draggedElement.style.top = '0px'; }
+        function stopDraggingWindow() { document.onmousemove = null; document.onmouseup = null; draggedElement = null; }
+
+        setInterval(() => { const clock = document.getElementById('win-clock-label'); if(clock) clock.innerText = new Date().toLocaleTimeString('ar-EG'); }, 1000);
+    </script>
+</body>
+</html>
